@@ -1,0 +1,180 @@
+
+
+<title>后台管理员</title>
+  
+<div class="layui-card layadmin-header">
+  <div class="layui-breadcrumb" lay-filter="breadcrumb">
+    <a lay-href="">主页</a>
+    <a><cite>系统管理</cite></a>
+    <a><cite>帐号列表</cite></a>
+  </div>
+</div>
+
+<div class="layui-fluid">   
+  <div class="layui-card">
+    
+    <div class="layui-card-body">
+      <div style="padding-bottom: 10px;">
+        <button class="layui-btn layuiadmin-btn-admin" data-type="add">添加</button>
+      </div>
+      
+      <table id="LAY-user-back-manage" lay-filter="LAY-user-back-manage"></table>  
+      <script type="text/html" id="table-useradmin-admin">
+        <a class="layui-btn layui-btn-normal layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i>编辑</a>
+        {{#  if(d.cadmin == '超级管理员'){ }}
+          <a class="layui-btn layui-btn-disabled layui-btn-xs"><i class="layui-icon layui-icon-delete"></i>删除</a>
+        {{#  } else { }}
+          <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="layui-icon layui-icon-delete"></i>删除</a>
+        {{#  } }}
+      </script>
+    </div>
+  </div>
+</div>
+
+<script>
+layui.use(['admin', 'form', 'user','table'], function(){
+  var $ = layui.$
+  ,admin = layui.admin
+  ,view = layui.view
+  ,table = layui.table
+  ,form = layui.form;
+  
+  form.render(null, 'layadmin-useradmin-formlist');
+
+  table.render({
+    elem: '#LAY-user-back-manage'
+    ,url: '/api/adminlist' //模拟接口
+    ,where: { //通过参数传递
+    access_token: layui.data('layuiAdmin').access_token
+  }
+    ,cols: [[
+      {type: 'checkbox', fixed: 'left'}
+      ,{field: 'id', width: 80, title: 'ID', sort: true}
+      ,{field: 'username', title: '登录名'}
+      ,{field: 'realname', title: '实名'}
+      ,{field: 'cadmin', title: '角色'}
+      ,{title: '操作', align: 'center', fixed: 'right', toolbar: '#table-useradmin-admin'}
+    ]]
+    ,text: '对不起，加载出现异常！'
+  });
+
+  table.on('tool(LAY-user-back-manage)', function(obj){
+    var data = obj.data;
+    if(obj.event === 'del'){
+        layer.confirm('确定删除此管理员？', function(index){
+        layer.close(index);
+//alert(JSON.stringify(obj));
+    admin.req({
+      url: '/api/rmadmin'
+      ,data: data
+      ,method: 'POST'
+      ,done: function(res){
+        layer.msg('删除成功', {
+          offset: '15px'
+          ,icon: 1
+          ,time: 1000
+        }, function(){
+          obj.del();
+          location.hash = '/user/administrators/list';
+        });
+      }
+    });
+
+      });
+    }else if(obj.event === 'edit'){
+      admin.popup({
+        title: '编辑管理员'
+        ,area: ['420px', '450px']
+        ,id: 'LAY-popup-user-add'
+        ,success: function(layero, index){
+          view(this.id).render('user/administrators/adminform', data).done(function(){
+            form.render(null, 'layuiadmin-form-admin');
+            
+            //监听提交
+            form.on('submit(LAY-user-back-submit)', function(data){
+              var field = data.field; //获取提交的字段
+
+              //提交 Ajax 成功后，关闭当前弹层并重载表格
+              //$.ajax({});
+    admin.req({
+      url: '/api/editadmin'
+      ,data: field
+      ,method: 'POST'
+      ,done: function(res){
+        layer.msg('修改成功', {
+          offset: '15px'
+          ,icon: 1
+          ,time: 1000
+        }, function(){
+          location.hash = '/user/administrators/list';
+        });
+      }
+    });
+
+              layui.table.reload('LAY-user-back-manage'); //重载表格
+              layer.close(index); //执行关闭 
+            });
+          });
+        }
+      });
+    }
+  });
+
+  
+  //监听搜索
+  form.on('submit(LAY-user-back-search)', function(data){
+    var field = data.field;
+    
+    //执行重载
+    table.reload('LAY-user-back-manage', {
+      where: field
+    });
+  });
+
+  //事件
+  var active = {
+    add: function(){
+      admin.popup({
+        title: '添加管理员'
+        ,area: ['420px', '450px']
+        ,id: 'LAY-popup-useradmin-add'
+        ,success: function(layero, index){
+          view(this.id).render('/user/administrators/adminform').done(function(){
+            form.render(null, 'layuiadmin-form-admin');
+            
+            //监听提交
+            form.on('submit(LAY-user-back-submit)', function(data){
+              var field = data.field; //获取提交的字段
+
+              //提交 Ajax 成功后，关闭当前弹层并重载表格
+              //$.ajax({});
+
+    admin.req({
+      url: '/api/addadmin' 
+      ,data: field
+      ,method: 'POST' 
+      ,done: function(res){
+        layer.msg('增加成功', {
+          offset: '15px'
+          ,icon: 1
+          ,time: 1000
+        }, function(){
+          location.hash = '/user/administrators/list';
+        });
+      }
+    });
+    
+              layui.table.reload('LAY-user-back-manage'); //重载表格
+              layer.close(index); //执行关闭 
+            });
+          });
+        }
+      });
+    }
+  }  
+  $('.layui-btn.layuiadmin-btn-admin').on('click', function(){
+    var type = $(this).data('type');
+    active[type] ? active[type].call(this) : '';
+  });
+});
+</script>
